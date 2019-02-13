@@ -1,0 +1,5 @@
+maven==3.5.0
+openjdk==8.0.144
+pytorch==1.0.0
+torchvision==0.2.1
+protobuf==3.6.1

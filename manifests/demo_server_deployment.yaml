@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ntdemo
+spec:
+  replicas: 2
+  minReadySeconds: 15
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: 
+      maxUnavailable: 1
+      maxSurge: 1 
+  template:
+    metadata:
+      labels:
+        app: ntdemo
+    spec:
+      containers:
+        - image: setogit/ntdemo
+          imagePullPolicy: Always
+          name: ntdemo
+          ports:
+            - containerPort: 3030
