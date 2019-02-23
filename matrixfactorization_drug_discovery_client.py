@@ -18,7 +18,7 @@ import http.client
 import json
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from server.utils import generate_locally, get_fragment_names, show_fragment_weight
+from server.utils import generate_model, get_fragment_names, show_fragment_weight
 
 def show_scores(labels, scores):
   fig = plt.figure()
@@ -26,7 +26,7 @@ def show_scores(labels, scores):
   cax = ax.matshow(scores, cmap='pink')
   fig.colorbar(cax)
   # The first [''] is consumed by matplotlib.
-  xtick_labels = [''] + labels
+  xtick_labels = [''] + [label[:2] for label in labels]
   ytick_labels = [''] + labels
   ax.set_title('Fragment Cosine Similarity by Matrix Factorization')
   ax.set_xticklabels(xtick_labels, rotation=90)
@@ -55,25 +55,24 @@ def get_from_server():
     return
   data = None
   if res.status==200 and res.reason=='OK':
-    data = res.read()
-    data = data.decode("utf-8")
-    data = '{"scores":' + data + '}'
+    data = res.read().decode("utf-8")
     data = json.loads(data)
+    data = {"names": data["names"], "scores": data["scores"]}
   else:
     print('error:', res.status, res.reason)
-    conn.close()
-    return
   conn.close()
-  return data["scores"]
+  return data
 
 def main():
   import sys
-  fragment_names = get_fragment_names()
   GET_METRICS_FROM_SERVER = len(sys.argv) == 1
   if GET_METRICS_FROM_SERVER:
-    show_scores(fragment_names, get_from_server())
+    data = get_from_server()
+    if data:
+      show_scores(data["names"], data["scores"])
   else:
-    scores, model = generate_locally()
+    fragment_names = get_fragment_names()
+    scores, model = generate_model()
     show_scores(fragment_names, scores)
     show_fragment_weight(fragment_names, model)
 
