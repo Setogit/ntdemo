@@ -1,22 +1,81 @@
 # -*- coding: utf-8 -*-
+import json, sys
 
-n_targets = 10
-n_fragments = 5
-fragment_comp = {
-  #           C O M P O U N D S
-  #      c0,c1,c2,c3,c4,c5,c6,c7,c8,c9
-  'fA': [1, 0, 0, 0, 0, 1, 0, 0, 1, 0], # fragment A
-  'fB': [0, 0, 1, 0, 1, 0, 1, 0, 0, 0], # fragment B
-  # fB is contained in compound 2, 4, and 6
-  'fC': [1, 0, 1, 0, 0, 0, 1, 0, 0, 1], # fragment C
-  # fC is contained in compound 0, 2, 6, and 9
-  'fD': [0, 0, 1, 0, 0, 1, 1, 0, 1, 0], # fragment D
-  'fE': [0, 1, 0, 1, 1, 0, 1, 0, 1, 1], # fragment E
-}
-assert len(fragment_comp) == n_fragments
-assert len(fragment_comp['fA']) == n_targets
+def load_data(json_file):
+  f = None
+  data = None
+  try:
+    f = open(json_file, 'r')
+    data = json.loads(f.read())
+  except:
+    print(sys.exc_info())
+    print('Default data is used instead of "{}".'.format(json_file))
+    default_data = {
+      "fragment_comp": {
+        # Compounds (drugs) are made of Chemical Fragments
+        #           C O M P O U N D S
+        #      c0,c1,c2,c3,c4,c5,c6,c7,c8,c9
+        'fA': [1, 0, 0, 0, 0, 1, 0, 0, 1, 0], # fragment A
+        'fB': [0, 0, 1, 0, 1, 0, 1, 0, 0, 0], # fragment B
+        # fB is contained in compound 2, 4, and 6
+        'fC': [1, 0, 1, 0, 0, 0, 1, 0, 0, 1], # fragment C
+        # fC is contained in compound 0, 2, 6, and 9
+        'fD': [0, 0, 1, 0, 0, 1, 1, 0, 1, 0], # fragment D
+        'fE': [0, 1, 0, 1, 1, 0, 1, 0, 1, 1], # fragment E
+      },
+      # Compounds (drugs) interact with Protein Targets (diseases)
+      "comp_target_interaction": [
+        #       T A R G E T S
+        #t0,t1,t2,t3,t4,t5,t6,t7,t8,t9  # COMPOUNDS
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0], # compound 0
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0], # compound 1
+        [1, 0, 1, 0, 1, 0, 0, 1, 1, 0], # compound 2
+        [0, 1, 0, 0, 0, 1, 0, 0, 0, 1], # compound 3
+        [0, 0, 0, 1, 0, 0, 1, 0, 1, 0], # compound 4
+        [1, 0, 0, 0, 0, 0, 0, 1, 1, 0], # compound 5
+        [1, 1, 0, 1, 1, 0, 0, 1, 1, 1], # compound 6
+        [0, 0, 1, 0, 0, 0, 1, 0, 0, 0], # compound 7
+        [0, 1, 0, 0, 0, 0, 1, 1, 1, 0], # compound 8
+        [0, 0, 0, 1, 1, 0, 0, 1, 0, 1], # compound 9
+      ]
+    }
+    data = default_data
+  if f:
+    f.close()
+  return data["fragment_comp"], data["comp_target_interaction"]
+
+fragment_comp, comp_target_interaction = load_data('/data/data.json')
 fragment_names = [name for name in fragment_comp]
-fragment_target_scores = None
+for frag in fragment_comp:
+  assert len(fragment_comp[frag]) == len(comp_target_interaction), \
+    'fragment_comp row and comp_target_interaction column should be the same length in "/data/data.json".'
+
+n_compounds = len(comp_target_interaction)
+n_targets = len(comp_target_interaction[0])
+n_fragments = len(fragment_comp)
+n_factors = 3 # n_fragments//2 + 1 # rank of matrix factorization
+
+
+def get_fragment_names():
+  return fragment_names
+
+def get_fragment_target_scores():
+  fragment_target_scores = [[0 for _ in range(n_targets)] for _ in range(n_fragments)]
+  for frag_ix, frag in enumerate(fragment_comp):
+    for target_ix in range(n_targets):
+      score = 0
+      for comp_ix in range(n_compounds):
+        if fragment_comp[frag][comp_ix]:
+          score += comp_target_interaction[comp_ix][target_ix]
+      fragment_target_scores[frag_ix][target_ix] = score
+  # print('Fragment-Target Scores', fragment_target_scores)
+  return fragment_target_scores
+
+fragment_target_scores = get_fragment_target_scores() 
+
+#
+# Recommender Model
+#________________________________________________
 
 def export_onnx_model(model, name='my_model.onnx'):
   import torch.onnx
@@ -52,9 +111,6 @@ def run_onnx_model_in_caffe2(orig_model, name='my_model.onnx'):
         print('~~~~~~~~', prediction, target)
   return is_close
 
-def get_fragment_names():
-  return fragment_names
-
 def calculate_cosice_scores(model, n_fragments):
   import torch
   cosine_scores = torch.Tensor(n_fragments, n_fragments)
@@ -67,46 +123,12 @@ def calculate_cosice_scores(model, n_fragments):
   cosine_scores = cosine_scores.numpy().tolist()
   return cosine_scores
 
-def generate_locally(n_epoch=1500):
+def generate_model(n_epoch=1500):
   import torch
-  global fragment_target_scores
   torch.manual_seed(7)
 
-  n_compounds = 10
-  n_factors = 3 # rank of matrix factorization
-
-  # Compounds (drugs) are made of Chemical Fragments
-  # Compounds (drugs) interact with Protein Targets (diseases)
-  comp_target_interaction = [
-    #       T A R G E T S
-    #t0,t1,t2,t3,t4,t5,t6,t7,t8,t9  # COMPOUNDS
-    [1, 0, 0, 0, 0, 1, 0, 1, 0, 0], # compound 0
-    [1, 0, 0, 0, 0, 1, 0, 1, 0, 0], # compound 1
-    [1, 0, 1, 0, 1, 0, 0, 1, 1, 0], # compound 2
-    [0, 1, 0, 0, 0, 1, 0, 0, 0, 1], # compound 3
-    [0, 0, 0, 1, 0, 0, 1, 0, 1, 0], # compound 4
-    [1, 0, 0, 0, 0, 0, 0, 1, 1, 0], # compound 5
-    [1, 1, 0, 1, 1, 0, 0, 1, 1, 1], # compound 6
-    [0, 0, 1, 0, 0, 0, 1, 0, 0, 0], # compound 7
-    [0, 1, 0, 0, 0, 0, 1, 1, 1, 0], # compound 8
-    [0, 0, 0, 1, 1, 0, 0, 1, 0, 1], # compound 9
-  ]
-  assert len(comp_target_interaction) == n_compounds
-  assert len(comp_target_interaction[0]) == n_targets
-
-  fragment_target_scores = [[0 for _ in range(n_targets)] for _ in range(n_fragments)]
-  for frag_ix, frag in enumerate(fragment_comp):
-    for target_ix in range(n_targets):
-      score = 0
-      for comp_ix in range(n_compounds):
-        if fragment_comp[frag][comp_ix]:
-          score += comp_target_interaction[comp_ix][target_ix]
-      fragment_target_scores[frag_ix][target_ix] = score
-  # print('Fragment-Target Scores', fragment_target_scores)
-
-  #
-  # Recommender Model Definition
-  #________________________________________________
+  # Model Definition
+  #___________________
 
   class MatrixFactorization(torch.nn.Module):
     def __init__(self, n_fragments, n_targets, n_factors=2):
@@ -121,9 +143,8 @@ def generate_locally(n_epoch=1500):
       pred = (user * item).sum(1)
       return pred
 
-  #
   # Model Training
-  #________________________________________________
+  #___________________
 
   model = MatrixFactorization(n_fragments, n_targets, n_factors=n_factors)
   loss_func = torch.nn.MSELoss()
@@ -146,14 +167,16 @@ def generate_locally(n_epoch=1500):
   imported_model = import_onnx_model(onnx_file)
   model = imported_model if imported_model else model
 
-  #
   # Results
-  #________________________________________________
+  #___________________
 
   cosine_scores = calculate_cosice_scores(model, n_fragments)
 
   return cosine_scores, model
 
+#
+# Visualization
+#________________________________________________
 
 def show_fragment_weight(labels, model):
   import dash
@@ -201,7 +224,7 @@ def show_fragment_weight(labels, model):
           font = dict( family = 'Helvetica' ),
           margin = dict( r=20, t=30, l=20, b=20 ),
           showlegend = False,
-          title='Fragment Embedding Weights (ranks=3)',
+          title='Fragment Embedding Weights (ranks={})'.format(n_factors),
           scene = dict(
               xaxis = axis_template_3d(xlabel),
               yaxis = axis_template_3d(ylabel),

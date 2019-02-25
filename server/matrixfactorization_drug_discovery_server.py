@@ -10,7 +10,7 @@ Matrix Factorization for Chemical Fragment-Protein Target activity prediction
 from flask import Flask, request
 import json
 from pyspark.sql import SparkSession
-from utils import generate_locally, get_fragment_names, show_fragment_weight
+from utils import generate_model, get_fragment_names, show_fragment_weight
 
 app = Flask(__name__)
 
@@ -27,8 +27,10 @@ def cosine_score():
     jsonlist = record
   return jsonlist
 
-def write_to_spark(cosine_scores):
+def write_to_spark(names, scores):
   global spark, spark_view, spark_key
+  assert len(names) == len(scores)
+  cosine_scores = {'names': names, 'scores': scores}
   scores = {spark_key: json.dumps(cosine_scores)}
   json_file = 'cosine_scores.json'
   with open(json_file, 'w') as f:
@@ -42,8 +44,8 @@ def write_to_spark(cosine_scores):
 def main():
   import os
   fragment_names = get_fragment_names()
-  cosine_scores, model = generate_locally()
-  write_to_spark(cosine_scores)
+  cosine_scores, model = generate_model()
+  write_to_spark(fragment_names, cosine_scores)
   host = os.getenv('NTDEMO_HOST', '0.0.0.0')
   try:
     port = int(os.getenv('NTDEMO_PORT', 3030))
