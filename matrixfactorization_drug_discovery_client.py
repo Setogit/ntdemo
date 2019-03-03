@@ -8,33 +8,9 @@ Matrix Factorization for Chemical Fragment-Protein Target activity prediction
 # Can we identify latent similarity among the 5 chemical fragments?
 '''
 
-GET_METRICS_FROM_SERVER = True
-
-#
-# Data Definition
-#________________________________________________
-
 import http.client
 import json
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from server.utils import generate_model, get_fragment_names, show_fragment_weight
-
-def show_scores(labels, scores):
-  fig = plt.figure()
-  ax = fig.add_subplot(111)
-  cax = ax.matshow(scores, cmap='pink')
-  fig.colorbar(cax)
-  # The first [''] is consumed by matplotlib.
-  xtick_labels = [''] + [label[:2] for label in labels]
-  ytick_labels = [''] + labels
-  ax.set_title('Fragment Cosine Similarity by Matrix Factorization')
-  ax.set_xticklabels(xtick_labels, rotation=90)
-  ax.set_yticklabels(ytick_labels)
-  # Show label at every tick
-  ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-  ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-  plt.show()
+from server.utils import generate_model, get_fragment_names, show_fragment_weight, show_scores
 
 def get_from_server():
   import os
@@ -65,6 +41,7 @@ def get_from_server():
 
 def main():
   import sys
+
   GET_METRICS_FROM_SERVER = len(sys.argv) == 1
   if GET_METRICS_FROM_SERVER:
     data = get_from_server()

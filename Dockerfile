@@ -54,6 +54,8 @@ RUN rm spark-2.4.0-bin-hadoop2.7.tgz
 RUN pip install -r requirements.txt
 RUN rm requirements.txt
 
+RUN python3 -m pip install jupyter
+
 ENV NTDEMO_HOST 0.0.0.0
 ENV NTDEMO_PORT 3030
 
