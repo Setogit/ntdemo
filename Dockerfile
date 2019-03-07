@@ -37,20 +37,16 @@ RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 ENV PATH ${WORK}/miniconda/bin:$PATH
 ENV CONDA_PATH ${WORK}/miniconda
 
-COPY server ${WORK}/server
-WORKDIR ${WORK}/server
-
-RUN pip install -r requirements.txt && rm requirements.txt
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
 
 # Set channels
 RUN conda config --add channels conda-forge # onnx
 RUN conda config --add channels pytorch # pytorch
 
 # install dependencies by conda
+COPY requirements_conda.txt requirements_conda.txt
 RUN conda install --file requirements_conda.txt
-RUN rm requirements_conda.txt
-
-RUN pip install onnx
 
 # set JAVA_HOME for Spark
 ENV JAVA_HOME ${WORK}/miniconda
@@ -61,18 +57,20 @@ RUN wget http://www-eu.apache.org/dist/spark/spark-2.4.0/spark-2.4.0-bin-hadoop2
     mv spark-2.4.0-bin-hadoop2.7 /usr/local/spark
 RUN rm spark-2.4.0-bin-hadoop2.7.tgz
 
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt && rm requirements.txt
-
+RUN pip install onnx
 RUN python -m pip install jupyter
+
+# copy ntdemo server code and bokeh_examples
+COPY server ${WORK}/server
+WORKDIR ${WORK}/server
 
 ENV NTDEMO_HOST 0.0.0.0
 ENV NTDEMO_PORT 3030
 
-EXPOSE 3030
-EXPOSE 8050
+EXPOSE ${NTDEMO_PORT}
+# 8888: jupyter notebook server
+# 5006: bokeh server
 EXPOSE 8888
 EXPOSE 5006
 
-WORKDIR ${WORK}
-CMD ["python", "server/matrixfactorization_drug_discovery_server.py"]
+CMD ["python", "matrixfactorization_drug_discovery_server.py"]
