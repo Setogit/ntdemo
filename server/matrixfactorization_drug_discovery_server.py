@@ -7,10 +7,10 @@ Matrix Factorization for Chemical Fragment-Protein Target activity prediction
 # Each compound is made of a combination of 5 chemical fragments.
 # Can we identify latent similarity among the 5 chemical fragments?
 '''
-from flask import Flask, request
+from flask import Flask
 import json
 from pyspark.sql import SparkSession
-from utils import generate_model, get_fragment_names, show_fragment_weight
+from utils import generate_model, get_fragment_names, show_fragment_weight, show_scores
 
 app = Flask(__name__)
 
@@ -41,8 +41,12 @@ def write_to_spark(names, scores):
   df = spark.read.load(json_file, format="json")
   df.createOrReplaceTempView(spark_view)
 
+def app_run(host, port):
+  app.run(host=host, port=port)
+
 def main():
   import os
+  from multiprocessing import Process
   fragment_names = get_fragment_names()
   cosine_scores, model = generate_model()
   write_to_spark(fragment_names, cosine_scores)
@@ -51,7 +55,11 @@ def main():
     port = int(os.getenv('NTDEMO_PORT', 3030))
   except:
     port = 3030
-  app.run(host=host, port=port)
+  p = Process(target=app_run, args=(host, port,))
+  p.start()
+  show_scores(fragment_names, cosine_scores)
+  p.join()
+
 
 if __name__ == '__main__':
   main()
