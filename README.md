@@ -24,7 +24,7 @@ This simple app covers:
 docker pull setogit/ntdemo
 docker run -p 3030:3030 -t setogit/ntdemo
 ```
-It will take a few minutes for ntdemo service to train the prediction/recommender model at start-up.  We get to the model training [here](#matrix-facorization-model-training).  To quickly check if the server is running in the container:
+It will take a few minutes for ntdemo service to train the prediction/recommender model at start-up.  We get to the model training [here](#matrix-factorization-model-training).  To quickly check if the server is running in the container:
 ```shell
 curl http://localhost:3030/cosine/score
 ```
