@@ -1,13 +1,15 @@
 # ntdemo
 
-This simple app covers:
+This app covers:
 * Client/Server in Python and Flask
 * Data pipeline with Spark
-* Matrix factorization model using PyTorch
+* [Matrix factorization model using PyTorch](#matrix-factorization-model-training)
 * Export the model to ONNX
 * Visualize with matplotlib(2D) and Plotly/Dash(interactive 3D)
 * Containerize the server w/ Docker and Dockerhub
 * Manage the container w/ Kubernetes
+* [Run bokeh server in container](#run-bokeh-server-in-container)
+* [Draw from matplotlib in container to MacOS host display](#draw-from-matplotlib-in-container-to-macos-host-display)
 
 > *Can we predict latent functional similarity between Chemical fragments ?*
 > 
@@ -24,7 +26,7 @@ This simple app covers:
 docker pull setogit/ntdemo
 docker run -p 3030:3030 -t setogit/ntdemo
 ```
-It will take a few minutes for ntdemo service to train the prediction/recommender model at start-up.  We get to the model training [here](#matrix-facorization-model-training).  To quickly check if the server is running in the container:
+It will take a few minutes for ntdemo service to train the prediction/recommender model at start-up.  We get to the model training [here](#matrix-factorization-model-training).  To quickly check if the server is running in the container:
 ```shell
 curl http://localhost:3030/cosine/score
 ```
@@ -151,6 +153,46 @@ Please note that the model is trained in the local memory space inside the clien
 
 ![Factor Weights](asset/images/figure03.png)
 
+## Run bokeh server in container
+
+```shell
+docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -p 5006:5006 -t setogit/ntdemo bash bokeh.sh
+```
+
+The `setogit/ntdemo` container includes more than `spark` and `pytorch`.  As shown in the `Dockerfile`, `openjdk` is required by `spark`, so it's in there.  For visualization, `matplotlib` and <a href="https://bokeh.pydata.org/en/latest/" target="_blank">bokeh</a> are included.  Other numerical packages such as `numpy`/`scipy` and `pandas` are included as well.
+
+To run an bokeh example, `docker run` the container with `setogit/ntdemo bash bokeh.sh` or you can run it as just `setogit/ntdemo` then, `docker exec -it <docker id> bash` from another terminal.  Once the `bokeh` server is started, see how it's displayed with your browser: `http://<ip address>:5006`
+
+![bokeh server](asset/images/figure04.png)
+
+## Draw from matplotlib in container to MacOS host display
+
+Local (non-web-based) GUI packages like `matplotlib` can draw images from inside the ntdemo container on the container host's display using X11 server. Here is the step to set up the X11 server on MacOS.  When the setup is done, small X11 server window will show up on the Mac scree.  You can safely close the window.
+```shell
+Need to install ocat and XQuartz first:
+1. brew install socat
+2. brew cask install xquartz
+3. logoff then logon to MacOS
+4. From XQuartz Preferences, check "Allow connections from network clients" under Security tab.
+5. After all installed,
+
+ > IP=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+ > socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\"$DISPLAY\" &
+ > open -a XQuartz && xhost + $IP
+```
+
+To run a non-server bokeh app on the server side, `docker exec -it <docker id> bash` from another terminal.  Under `/work/server` directory in the container, run these two lines:
+```
+python -c "import bokeh.sampledata; bokeh.sampledata.download()"
+python bokeh_examples/histogram.py
+```
+You can run any *.py script under `/work/server/bokeh_examples` this way.  Note that the `bokeh` example *.py draws in  `firefox` which is running inside the container.  The GUI (firefox) is drawn on the host display via X11.
+
+References:
+    <a href="https://blog.alexellis.io/linux-desktop-on-mac/" target="_blank">Bring Linux apps to the Mac Desktop with Docker</a>, 
+    <a href="https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc" target="_blank">Running GUI with Docker on Mac OS X</a>
+
+![Draw from container to host display](asset/images/figure05.png)
 
 ## Feature/Task Items
 
@@ -174,8 +216,11 @@ Please note that the model is trained in the local memory space inside the clien
 - [x] Dockerhub auto build
 - [x] PyTorch export to ONNX
 - [ ] ~~ONNX import to PyTorch~~  (ONNX import not supported by PyTorch yet)
+- [x] Run bokeh server in container
+- [x] Draw from matplotlib in container to MacOS host display
 
 ## Revision History
 
 * 1.0.0 Initial release  setogit@gmail.com
 * 2.0.0 Support data set customization with data.json  setogit@gmail.com
+* 2.1.0 Matplotlib and bokeh server running in container  setogit@gmail.com

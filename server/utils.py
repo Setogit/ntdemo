@@ -177,11 +177,29 @@ def generate_model(n_epoch=1500):
 #
 # Visualization
 #________________________________________________
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import dash
+import dash_html_components as html
+import dash_core_components as dcc
+
+def show_scores(labels, scores):
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  cax = ax.matshow(scores, cmap='pink')
+  fig.colorbar(cax)
+  # The first [''] is consumed by matplotlib.
+  xtick_labels = [''] + [label[:2] for label in labels]
+  ytick_labels = [''] + labels
+  ax.set_title('Fragment Cosine Similarity by Matrix Factorization')
+  ax.set_xticklabels(xtick_labels, rotation=90)
+  ax.set_yticklabels(ytick_labels)
+  # Show label at every tick
+  ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+  ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+  plt.show()
 
 def show_fragment_weight(labels, model):
-  import dash
-  import dash_html_components as html
-  import dash_core_components as dcc
   app = dash.Dash('matrix_factorization')
   
   print(model.fragment_factors.weight)
