@@ -180,13 +180,18 @@ Need to install ocat and XQuartz first:
  > socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\"$DISPLAY\" &
  > open -a XQuartz && xhost + $IP
 ```
+Then, restart the container.  The Fragment Similarity figure (matplotlib drawing) will be displayed on Mac display in X11 window:
+
+```
+docker run -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix -p 3030:3030 -p 5006:5006 -t setogit/ntdemo
+```
 
 To run a non-server bokeh app on the server side, `docker exec -it <docker id> bash` from another terminal.  Under `/work/server` directory in the container, run these two lines:
 ```
 python -c "import bokeh.sampledata; bokeh.sampledata.download()"
 python bokeh_examples/histogram.py
 ```
-You can run any *.py script under `/work/server/bokeh_examples` this way.  Note that the `bokeh` example *.py draws in  `firefox` which is running inside the container.  The GUI (firefox) is drawn on the host display via X11.
+You can run any *.py script under `/work/server/bokeh_examples` this way.  Note that the `bokeh` example *.py draws in `firefox` which is running inside the container.  The GUI (firefox) is drawn on the host display via X11.
 
 References:
     <a href="https://blog.alexellis.io/linux-desktop-on-mac/" target="_blank">Bring Linux apps to the Mac Desktop with Docker</a>, 
