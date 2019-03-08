@@ -264,4 +264,4 @@ def show_fragment_weight(labels, model):
                         figure=FIGURE ),
           ], className='3d-graph', style=dict(textAlign='center'))
 
-  app.run_server()
+  app.run_server(debug=False, host='0.0.0.0')

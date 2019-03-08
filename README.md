@@ -24,12 +24,13 @@ This app covers:
 
 ```shell
 docker pull setogit/ntdemo
-docker run -p 3030:3030 -t setogit/ntdemo
+docker run -p 3030:3030 -p 8050:8050 -t setogit/ntdemo
 ```
 It will take a few minutes for ntdemo service to train the prediction/recommender model at start-up.  We get to the model training [here](#matrix-factorization-model-training).  To quickly check if the server is running in the container:
 ```shell
-curl http://localhost:3030/cosine/score
+curl http://0.0.0.0:3030/cosine/score
 ```
+You can also see 3D interactive accessing `0.0.0.0:8050` on your browser.  We'll discuss [the 3D visualization with Plotly Dash later](#show-fragment-factor-weights-in-3d).
 
 ### (2) Install ntdemo client from Github
 
@@ -79,7 +80,7 @@ The fragment similarity map is built from the default data set built in the serv
 ```
 It's easy to customize the data set and retrain the model, e.g., `/Users/user/ntdemo/asset/data.json` we git-cloned in the step (2).  To retrain the model using the `data.json`, we start the container with `docker run -v` option to mount `/Users/user/ntdemo/asset` to `/data` in the container.  At start-up time, the ntdemo server looks for `/data/data.json` and runs the training with the data set.  If it's not found, the default data set is used.
 ```shell
-docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -t setogit/ntdemo
+docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -p 8050:8050 -t setogit/ntdemo
 ```
 Note that the `data.json` is on your local disk.  It's also accessible inside the container memory space.  To retrain the model with your data set, you can modify `data.json` and restart the container.  
 
@@ -147,7 +148,7 @@ You can visualize the model parameters learned in the train run by `python ntdem
  (-1.14348, 1.20169,  0.53775),
  (-0.48097, 2.06527,  0.22856)]
 ```
-First, the 2D map is displayed.  After you close the 2D map, the Plotly Dash server will start at `localhost:8050`.  Go ahead and check out the interactive 3D figure on your browser.
+First, the 2D map is displayed.  After you close the 2D map, the Plotly Dash server will start at `0.0.0.0:8050`.  Go ahead and check out the interactive 3D figure on your browser.
 
 Please note that the model is trained in the local memory space inside the client using your local `/data/data.json`.  The ntdemo server will not be affected.
 
@@ -156,12 +157,11 @@ Please note that the model is trained in the local memory space inside the clien
 ## Run bokeh server in container
 
 ```shell
-docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -p 5006:5006 -t setogit/ntdemo bash bokeh.sh
+docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -p 8050:8050 -p 5006:5006 -t setogit/ntdemo bash bokeh.sh
 ```
-
 The `setogit/ntdemo` container includes more than `spark` and `pytorch`.  As shown in the `Dockerfile`, `openjdk` is required by `spark`, so it's in there.  For visualization, `matplotlib` and <a href="https://bokeh.pydata.org/en/latest/" target="_blank">bokeh</a> are included.  Other numerical packages such as `numpy`/`scipy` and `pandas` are included as well.
 
-To run an bokeh example, `docker run` the container with `setogit/ntdemo bash bokeh.sh` or you can run it as just `setogit/ntdemo` then, `docker exec -it <docker id> bash` from another terminal.  Once the `bokeh` server is started, see how it's displayed with your browser: `http://<ip address>:5006`
+To run an bokeh example, `docker run` the container with `setogit/ntdemo bash bokeh.sh`.  Once the `bokeh` server is started, see how it's displayed with your browser: `http://0.0.0.0:5006`
 
 ![bokeh server](asset/images/figure04.png)
 
@@ -183,7 +183,7 @@ Need to install ocat and XQuartz first:
 Then, restart the container.  The Fragment Similarity figure (matplotlib drawing) will be displayed on Mac display in X11 window:
 
 ```
-docker run -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix -p 3030:3030 -p 5006:5006 -t setogit/ntdemo
+docker run -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix -p 3030:3030 -p 8050:8050 -p 5006:5006 -t setogit/ntdemo
 ```
 
 To run a non-server bokeh app on the server side, `docker exec -it <docker id> bash` from another terminal.  Under `/work/server` directory in the container, run these two lines:
@@ -229,3 +229,4 @@ References:
 * 1.0.0 Initial release  setogit@gmail.com
 * 2.0.0 Support data set customization with data.json  setogit@gmail.com
 * 2.1.0 Matplotlib and bokeh server running in container  setogit@gmail.com
+* 2.1.1 Plotly Dash server running in container  setogit@gmail.com
