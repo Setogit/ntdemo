@@ -44,6 +44,9 @@ def write_to_spark(names, scores):
 def flask_app_run(host, port):
   app.run(host=host, port=port, debug=False)
 
+def dash_app_run(fragment_names, model):
+  show_fragment_weight(fragment_names, model)
+
 def main():
   import os
   from multiprocessing import Process
@@ -55,10 +58,13 @@ def main():
     port = int(os.getenv('NTDEMO_PORT', 3030))
   except:
     port = 3030
-  p = Process(target=flask_app_run, args=(host, port, ))
-  p.start()
+  p_flask = Process(target=flask_app_run, args=(host, port, ))
+  p_dash = Process(target=dash_app_run, args=(fragment_names, model, ))
+  p_flask.start()
+  p_dash.start()
   show_scores(fragment_names, cosine_scores)
-  p.join()
+  p_flask.join()
+  p_dash.join()
 
 
 if __name__ == '__main__':

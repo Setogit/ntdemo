@@ -69,8 +69,10 @@ ENV NTDEMO_PORT 3030
 
 EXPOSE ${NTDEMO_PORT}
 # 8888: jupyter notebook server
+# 8050: dash server
 # 5006: bokeh server
 EXPOSE 8888
+EXPOSE 8050
 EXPOSE 5006
 
 CMD ["python", "matrixfactorization_drug_discovery_server.py"]
