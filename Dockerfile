@@ -1,4 +1,5 @@
-FROM ubuntu:18.04
+FROM nvidia/cuda:10.0-devel-ubuntu18.04
+# FROM nvidia/cuda:10.0-runtime-ubuntu18.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -17,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     curl \
     wget \
-    firefox
+    firefox \
+    apt-utils
 
 # install pip
 RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
