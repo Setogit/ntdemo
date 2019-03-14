@@ -13,7 +13,7 @@
 
 ![Ntdemo Architecture](asset/images/figure00.png)
 
-# Container as Dev Environment
+# Container as Portable Dev Environment
 
 We can think of  container as a **portable development environment**.  Code and data are managed with version control system (VCS) such as Github and Bitbucket.  We pull them to local repository and mounted to the container as external volumes.  In software development work-flow, the VCS is integrated with CI&CD infrastructure for test, build, deployment and documentation.  The code and data are mounted/unmounted to the container as needed.  The ntdemo container is the portable development environment for deep learning work flow.
 
@@ -118,7 +118,7 @@ On the host side, you need to install **nvidia-docker2** to enable GPU access.  
 ```shell
 nvidia-docker2 run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
 ```
-Nvidia-docker2 supports Linux platforms only.  The details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, you can pick any GPU-enabled EC2 instance -- nvidia-docker2 is pre-installed as `docker`:
+Nvidia-docker2 supports Linux platforms only.  The details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` on GPU-enabled EC2 instances:
 ```shell
 sudo rm /usr/local/cuda
 sudo ln -s /usr/local/cuda-10.0 /usr/local/cuda
