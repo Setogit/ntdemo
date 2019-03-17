@@ -130,7 +130,7 @@ Note that since multiple versions of CUDA are pre-installed and 9.0 is the defau
 # show the CUDA toolkit version
 nvcc -V
 
-[ec2-user@ip-172-31-12-167 ~]$ nvcc -V
+root@d8f3219703fc:/work/code# nvcc -V
 nvcc: NVIDIA (R) Cuda compiler driver
 Copyright (c) 2005-2018 NVIDIA Corporation
 Built on Sat_Aug_25_21:08:01_CDT_2018
@@ -141,7 +141,8 @@ Cuda compilation tools, release 10.0, V10.0.130
 # show the GPU status
 nvidia-smi
 
-[ec2-user@ip-172-31-12-167 ~]$ nvidia-smi
+root@d8f3219703fc:/work/code# nvidia-smi
+
 +-----------------------------------------------------------------------------+
 | NVIDIA-SMI 410.79       Driver Version: 410.79       CUDA Version: 10.0     |
 |-------------------------------+----------------------+----------------------+
@@ -149,7 +150,7 @@ nvidia-smi
 | Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
 |===============================+======================+======================|
 |   0  Tesla M60           On   | 00000000:00:1E.0 Off |                    0 |
-| N/A   28C    P8    14W / 150W |      0MiB /  7618MiB |      0%      Default |
+| N/A   54C    P8    15W / 150W |      0MiB /  7618MiB |      0%      Default |
 +-------------------------------+----------------------+----------------------+
 
 +-----------------------------------------------------------------------------+
