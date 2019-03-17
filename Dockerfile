@@ -64,7 +64,30 @@ RUN python -m pip install jupyter
 
 # copy ntdemo server code and bokeh_examples
 COPY server ${WORK}/server
-WORKDIR ${WORK}/server
+
+# copy mecab code and dictionary
+COPY asset/chatbot ${WORK}/chatbot
+WORKDIR ${WORK}/chatbot/download
+RUN tar zxfv mecab-0.996.tar.gz
+WORKDIR ${WORK}/chatbot/download/mecab-0.996
+RUN ./configure && \
+    make && \
+    make check
+RUN su
+RUN make install
+WORKDIR ${WORK}/chatbot/download
+RUN tar zxfv mecab-ipadic-2.7.0-20070801.tar.gz
+WORKDIR ${WORK}/chatbot/download/mecab-ipadic-2.7.0-20070801
+RUN ./configure --with-charset=utf-8 && \
+    mecab-config --libs-only-L | tee /etc/ld.so.conf.d/mecab.conf && \
+    ldconfig && \
+    make && \
+    make install
+RUN exit
+WORKDIR ${WORK}/chatbot/download
+RUN rm mecab-0.996.tar.gz && \
+    rm mecab-ipadic-2.7.0-20070801.tar.gz
+
 
 ENV NTDEMO_HOST 0.0.0.0
 ENV NTDEMO_PORT 3030
@@ -77,4 +100,5 @@ EXPOSE 8888
 EXPOSE 8050
 EXPOSE 5006
 
+WORKDIR ${WORK}/server
 CMD ["python", "matrixfactorization_drug_discovery_server.py"]

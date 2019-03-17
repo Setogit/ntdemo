@@ -1,0 +1,19 @@
+######################################################################
+# The origin of this source code is: git@github.com:pytorch/tutorials.git
+# Chatbot Tutorial
+# ================
+# **Author:** `Matthew Inkawhich <https://github.com/MatthewInkawhich>`_
+######################################################################
+# 『名大会話コーパス』を使用しています。
+# 藤村逸子・大曽美恵子・大島ディヴィッド義和、2011
+# 「会話コーパスの構築によるコミュニケーション研究」
+# 藤村逸子、滝沢直宏編『言語研究の技法：データの収集と分析』p. 43-72、ひつじ書房
+######################################################################
+# Cornell Movie-Dialogs Corpus
+#
+# Distributed together with:
+#
+# "Chameleons in imagined conversations: A new approach to understanding coordination of linguistic style in dialogs"
+# Cristian Danescu-Niculescu-Mizil and Lillian Lee
+# Proceedings of the Workshop on Cognitive Modeling and Computational Linguistics, ACL 2011.
+######################################################################

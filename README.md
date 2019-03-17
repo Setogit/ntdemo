@@ -4,6 +4,7 @@
 * Data pipeline with Spark
 * [Matrix factorization model using PyTorch](#matrix-factorization-model-training)
 * [Enable GPU access inside the container](#enable-gpu-access-inside-the-container)
+* [Chatbot Model Training on GPU and CPU](#chatbot-model-training-on-gpu-and-cpu)
 * Export the model to ONNX
 * Visualize with matplotlib(2D) and Plotly/Dash(interactive 3D)
 * Containerize the server w/ Docker and Dockerhub
@@ -37,6 +38,30 @@ It will take a few minutes for ntdemo service to train the prediction/recommende
 curl http://0.0.0.0:3030/cosine/score
 ```
 You can also see 3D interactive accessing `0.0.0.0:8050` on your browser.  We'll discuss [the 3D visualization with Plotly Dash later](#show-fragment-factor-weights-in-3d).
+
+We have a pre-trained chatbot model in `ntdemo2 container.  If you'd like to try, open a separate terminal window:
+```shell
+sudo docker exec -it <container id> bash
+```
+then, inside the container:
+```shell
+cd /work/chatbot
+python chatbot.pyc
+```
+in 10 seconds or so, it'll be ready.  
+```shell
+You can start chatting or "q" to quit.
+> hi
+Bot: hi how d your day go ?
+> good. what is your name?
+Bot: my name is sir robin of camelot !
+> how old are you, sir?
+Bot: twenty eight .
+> do you drink?
+Bot: no .
+> 
+```
+We'll discuss [more in GPU section](#chatbot-model-training-on-gpu-and-cpu).
 
 ### (2) Install ntdemo client from Github
 
@@ -109,63 +134,6 @@ Note that `matrixfactorization_drug_discovery_*.py` reads the host and the port 
 The model is to minimize the mean square error between the ground truth value and a dot product of the two predicted fragment factor vectors.  The factor matrices are implemented as PyTorch `Embedding`.  The training process converges in 1,000 iterations/10 seconds as shown below since our current data set is very small (5 fragments x 10 targets).  The ntdemo service runs the training at the start-up time.
 
 ![Model Training](asset/images/figure02.png)
-
-## Enable GPU access inside the container
-
-PyTorch training can be accelerated if Nvidia GPU is available on the host.  The `ntdemo2` docker image contains PyTorch and required packages such as CUDA Tool 10.0.130 to access the host GPU from the container.
-
-On the host side, you need to install **nvidia-docker2** to enable GPU access.  Note that `--runtime=nvidia` is the key.
-```shell
-nvidia-docker2 run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
-```
-Nvidia-docker2 supports Linux platforms only.  The details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` on GPU-enabled EC2 instances:
-```shell
-sudo rm /usr/local/cuda
-sudo ln -s /usr/local/cuda-10.0 /usr/local/cuda
-
-sudo docker run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
-```
-Note that since multiple versions of CUDA are pre-installed and 9.0 is the default, we need to manually switch to 10.0.  Try some CUDA tool to confirm GPU access inside the container.  **Deep Learning Base AMI (Amazon Linux) Version 16.2** AMI and **g3s.xlarge** EC2 instance are used:
-```shell
-# show the CUDA toolkit version
-nvcc -V
-
-root@d8f3219703fc:/work/code# nvcc -V
-nvcc: NVIDIA (R) Cuda compiler driver
-Copyright (c) 2005-2018 NVIDIA Corporation
-Built on Sat_Aug_25_21:08:01_CDT_2018
-Cuda compilation tools, release 10.0, V10.0.130
-```
-
-```shell
-# show the GPU status
-nvidia-smi
-
-root@d8f3219703fc:/work/code# nvidia-smi
-
-+-----------------------------------------------------------------------------+
-| NVIDIA-SMI 410.79       Driver Version: 410.79       CUDA Version: 10.0     |
-|-------------------------------+----------------------+----------------------+
-| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
-|===============================+======================+======================|
-|   0  Tesla M60           On   | 00000000:00:1E.0 Off |                    0 |
-| N/A   54C    P8    15W / 150W |      0MiB /  7618MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-
-+-----------------------------------------------------------------------------+
-| Processes:                                                       GPU Memory |
-|  GPU       PID   Type   Process name                             Usage      |
-|=============================================================================|
-|  No running processes found                                                 |
-+-----------------------------------------------------------------------------+
-
-```
-You can also run a short PyTorch code:
-```shell
-python -c "import torch; print(torch.cuda.is_available())"
-```
-Note that PyTorch 1.0 does not run on `g2.2xlarge` EC2 instance due to `old_gpu_warn`.
 
 ## Serving from Spark Backing Store
 
@@ -280,6 +248,144 @@ References:
     <a href="https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc" target="_blank">Running GUI with Docker on Mac OS X</a>
 
 ![Draw from container to host display](asset/images/figure05.png)
+
+## Enable GPU access inside the container
+
+PyTorch training can be accelerated if Nvidia GPU is available on the host.  The `ntdemo2` docker image contains PyTorch and required packages such as CUDA Tool 10.0.130 to access the host GPU from the container.
+
+On the host side, you need to install **nvidia-docker2** to enable GPU access.  Note that `--runtime=nvidia` is the key.
+```shell
+nvidia-docker2 run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
+```
+Nvidia-docker2 supports Linux platforms only.  The details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` on GPU-enabled EC2 instances:
+```shell
+sudo rm /usr/local/cuda
+sudo ln -s /usr/local/cuda-10.0 /usr/local/cuda
+
+sudo docker run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
+```
+Note that since multiple versions of CUDA are pre-installed and 9.0 is the default, we need to manually switch to 10.0.  Try some CUDA tool to confirm GPU access inside the container.  **Deep Learning Base AMI (Amazon Linux) Version 16.2** AMI and **g3s.xlarge** EC2 instance are used:
+```shell
+# show the CUDA toolkit version
+nvcc -V
+
+root@d8f3219703fc:/work/code# nvcc -V
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2018 NVIDIA Corporation
+Built on Sat_Aug_25_21:08:01_CDT_2018
+Cuda compilation tools, release 10.0, V10.0.130
+```
+
+```shell
+# show the GPU status
+nvidia-smi
+
+root@d8f3219703fc:/work/code# nvidia-smi
+
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 410.79       Driver Version: 410.79       CUDA Version: 10.0     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|===============================+======================+======================|
+|   0  Tesla M60           On   | 00000000:00:1E.0 Off |                    0 |
+| N/A   54C    P8    15W / 150W |      0MiB /  7618MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+
++-----------------------------------------------------------------------------+
+| Processes:                                                       GPU Memory |
+|  GPU       PID   Type   Process name                             Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+
+```
+You can also run a short PyTorch code:
+```shell
+python -c "import torch; print(torch.cuda.is_available())"
+```
+Note that PyTorch 1.0 does not run on `g2.2xlarge` EC2 instance due to `old_gpu_warn`.
+
+## Chatbot Model Training on GPU and CPU
+
+The second model example included in `ntdemo2` is chatbot (English and Japanese) which is a modified version of <a href="https://pytorch.org/tutorials/" target="_blank">the tutorial</a> provided by the PyTorch team.  It's <a href="https://arxiv.org/abs/1506.05869" target="_blank">seq2seq model with attention</a>.
+
+The inference/evaluation (single run) is fast enough on CPU, but for training, GPU plays a key role to run millions of iterations.  For example, the chatbot training on `g3s` EC2 instance with `Tesla M60` GPU takes less than one hour.  On MacBook Pro CPU, it takes 10 hours for 30000 iterations.
+
+```shell
+root@0c0b3f286a39:/work/chatbot# python chatbot.pyc -h
+
+python chatbot.pyc <LANGUAGE> <ITERATIONS>
+
+   LANGUAGE: String: "JA" for Japanese or "EN" for English (default: EN)
+   ITERATIONS: Integer: Number of iterations to run training
+   pre-trained EN : 29000 iterations
+               JA : 25000 iterations
+
+   CHECKPOINT should be <= ITERATIONS
+
+Examples:
+   python chatbot.py    : chat in English
+   python chatbot.py JA : chat in Japanese
+   python chatbot.py JA 28000 : train Japanese chatbot from the pre-trained (25000 iterations) till 28000 iterations, then chat in Japanese
+   python chatbot.py EN 28000 : chat in English because pre-trained to 29000 
+
+```
+Here is a transcript of casual dialogue between human (>) and the Japanese chatbot (Bot:) after 25000 training iterations.
+
+```shell
+チャットを始めてください。"q"を入力すれば終了します。
+> うまくいってる？
+Bot: そう な ん だ
+> へー
+Bot: 行け ば
+> どこに？
+Bot: 頭 に
+> 頭？
+Bot: 頭 弱い
+> あ、痛いのか。
+Bot: うん わかっ て ない ん じゃ ない の ー
+> わからないよ。
+Bot: わから ない
+> うん。
+Bot: ふーん
+> 頭、痛かったんじゃないの。
+Bot: どれ だっ た
+> 頭。
+Bot: 頭 弱い
+> あ、弱いのか。は、は、は。
+Bot: うん 今週 の 安く さ ー
+> 何が、安いの。
+Bot: ここ に ある やつ 安い 方 あり
+> だから、何が安いのさ。
+Bot: そう それ は なんか その 方 が
+> どれ？
+Bot: これ ああ そう ふわふわ それ 去年 の
+> 何？
+Bot: 聞け て ない
+> え、聞いてない？
+Bot: うん 自慢 し なきゃ あの
+> 自慢するのは、ほどほどにしないとね。
+Bot: うん よかっ た
+> 明日、何するの？
+Bot: もう いい と 思う
+> わかった。
+Bot: あー
+> 休む
+Bot: うん
+> お休み
+Bot: うん
+> また、明日。
+Bot: また あれ たら
+> どこで
+Bot: 駅前 な ｂ 2 駅前 で
+> どこの
+Bot: え えーと
+> 宇都宮
+Bot: うん
+> q
+```
+
 
 ## Feature/Task Items
 
