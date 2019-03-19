@@ -6,11 +6,12 @@
 * [Enable GPU access inside the container](#enable-gpu-access-inside-the-container)
 * [Chatbot Model Training on GPU and CPU](#chatbot-model-training-on-gpu-and-cpu)
 * Export the model to ONNX
-* Visualize with matplotlib(2D) and Plotly/Dash(interactive 3D)
-* Containerize the server w/ Docker and Dockerhub
+* Visualize with [matplotlib(2D)](#figure-showing-the-similarity-of-five-fragments-in-percentage) and [Plotly/Dash(interactive 3D)](#show-fragment-factor-weights-in-3d)
+* Containerize with Docker and Dockerhub
 * Manage the container w/ Kubernetes
 * [Run bokeh server in container](#run-bokeh-server-in-container)
 * [Draw from matplotlib in container to MacOS host display](#draw-from-matplotlib-in-container-to-macos-host-display)
+* Appendix: [Chemical fragment functional similarity model](#appendix-chemical-fragment-similarity)
 
 ![Ntdemo Architecture](asset/images/figure00.png)
 
@@ -22,7 +23,7 @@ The ntdemo docker image contains one set of DL framework (PyTorch), data base (S
 
 What about hardware?  We can run the container not only on laptop but on the cloud with many different configurations - memory size, network speed, storage capacity, GPU, etc.  We can put local docker image storage on DISK1, github local repositories on DISK2, and data sets on DISK3 and mount them to compute resource as needed.  For example, I run the container on CPU of my laptop for initial prototyping.  For training with terabytes of production dataset, I use the same container on the cloud with GPU.  The training speed is 10x of laptop at $1 per hour.  10 hours vs. 1 hour; 10x productivity gain for $1, not bad.  **Container as portable development environment works anywhere and the productivity/cost is manageable as we wish.** 
 
-The `setogit/ntdemo2` container is capable of all these scenarios.  With that in mind, let's start.
+The `setogit/ntdemo2` container is capable of running all those scenarios.  We've got a lot to cover.  Let's start.
 
 
 ## Quick Start
@@ -33,13 +34,15 @@ The `setogit/ntdemo2` container is capable of all these scenarios.  With that in
 docker pull setogit/ntdemo2
 docker run -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
 ```
-It will take a few minutes for ntdemo service to train the prediction/recommender model at start-up.  We get to the model training [here](#matrix-factorization-model-training).  To quickly check if the server is running in the container:
+This `curl` is useful to quickly check if the server is up and running:
 ```shell
 curl http://0.0.0.0:3030/cosine/score
 ```
-You can also see 3D interactive accessing `0.0.0.0:8050` on your browser.  We'll discuss [the 3D visualization with Plotly Dash later](#show-fragment-factor-weights-in-3d).
+Please note that it will take a few minutes to train a [Chemical Fragment Similarity](#appendix-chemical-fragment-similarity) model at start-up.  You can also see 3D interactive visualization of the similarity at `0.0.0.0:8050` on your browser.  We'll discuss [the model training](#matrix-factorization-model-training) and [the 3D visualization](#show-fragment-factor-weights-in-3d) later.
 
-We have a pre-trained chatbot model in `ntdemo2 container.  If you'd like to try, open a separate terminal window:
+### (2) Chatbot deep learning model
+
+The container includes another model: chatbot.  It's pre-trained.  Open a separate terminal window and run three command lines:
 ```shell
 sudo docker exec -it <container id> bash
 ```
@@ -48,7 +51,7 @@ then, inside the container:
 cd /work/chatbot
 python chatbot.pyc
 ```
-in 10 seconds or so, it'll be ready.  
+in 10 sec, it'll be ready.  
 ```shell
 You can start chatting or "q" to quit.
 > hi
@@ -61,27 +64,39 @@ Bot: twenty eight .
 Bot: no .
 > 
 ```
-We'll discuss [more in GPU section](#chatbot-model-training-on-gpu-and-cpu).
+We'll discuss [more about the chatbot in GPU section](#chatbot-model-training-on-gpu-and-cpu).
 
-### (2) Install ntdemo client from Github
+### (3) Install ntdemo client from Github
 
-The client code polls the prediction result and visualizes the functional similarity of each fragment-fragment pair.
+<a href="https://github.com/Setogit/ntdemo/blob/master/matrixfactorization_drug_discovery_client.py" target="_blank">The client code</a> calls [REST API](#rest-api) and visualizes the functional similarity of each fragment-fragment pair.
 ```shell
 git clone https://github.com/Setogit/ntdemo.git
 
 cd ntdemo
 python matrixfactorization_drug_discovery_client.py
 ```
-#### fragment similarity
+#### Figure showing the similarity of five fragments in percentage
 ![Fragment Similarity](asset/images/figure01.png)
 
-> *Can we predict latent functional similarity between Chemical fragments ?*
-> 
-> Idea: Chemical compounds are made of smaller parts (fragments). The compounds interact with protein targets when a drug alleviates a disease.  Hypothesis is that there might be some correlation at fragment level in case two compounds are known to alleviate a certain disease.  Compounds-targets activities are directly observable, but fragments-targets are not.  Given the protein activity data observed in in-vivo tests, can we predict the latent mechanism at fragment level?  If two compounds show different side effects, can we explain the mechanism at fragment level?
+### (Optional) Add the container to Kubernetes cluster
 
-### (Optional) Customize fragment/compound/target data set
+```shell
+cd ntdemo/manifests
+kubectl apply -f demo_server_deployment.yaml --record
+kubectl apply -f demo_server_service.yaml
+```
 
-The fragment similarity map is built from the default data set built in the service:
+Note that `matrixfactorization_drug_discovery_*.py` reads the host and the port from `NTDEMO_HOST` and `NTDEMO_PORT` environment variables.
+
+## Matrix Factorization Model Training
+
+The model is to minimize the mean square error between the ground truth value and a dot product of the two predicted fragment factor vectors.  The factor matrices are implemented as PyTorch `Embedding`.  The training process converges in 1,000 iterations/10 seconds as shown below since our current data set is very small (5 fragments x 10 targets).  The ntdemo service runs the training at the start-up time.
+
+![Model Training](asset/images/figure02.png)
+
+## Re-train with custom fragment/compound/target data set
+
+[The fragment similarity map](#figure-showing-the-similarity-of-five-fragments-in-percentage) is built from the default data set built in the service:
 ```shell
     default_data = {
       "fragment_comp": {
@@ -113,47 +128,25 @@ The fragment similarity map is built from the default data set built in the serv
       ]
     }
 ```
-It's easy to customize the data set and retrain the model, e.g., `/Users/user/ntdemo/asset/data.json` we git-cloned in the step (2).  To retrain the model using the `data.json`, we start the container with `docker run -v` option to mount `/Users/user/ntdemo/asset` to `/data` in the container.  At start-up time, the ntdemo server looks for `/data/data.json` and runs the training with the data set.  If it's not found, the default data set is used.
+It's easy to customize the data set and retrain the model, e.g., `/Users/user/ntdemo/asset/data.json` we git-cloned in [the quick start step](#3-install-ntdemo-client-from-github).  To retrain the model using the `data.json`, we start the container with `docker run -v` option to mount `/Users/user/ntdemo/asset` to `/data` in the container.  At start-up time, the ntdemo server looks for `/data/data.json` and runs the training with the data set.  If it's not found, the default data set is used.
 ```shell
 docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
 ```
-Note that the `data.json` is on your local disk.  It's also accessible inside the container.  To retrain the model with your data set, you can modify `data.json` and restart the container.
-
-### (Optional) Add the container to Kubernetes cluster
-
-```shell
-cd ntdemo/manifests
-kubectl apply -f demo_server_deployment.yaml --record
-kubectl apply -f demo_server_service.yaml
-```
-
-Note that `matrixfactorization_drug_discovery_*.py` reads the host and the port from `NTDEMO_HOST` and `NTDEMO_PORT` environment variables.
-
-## Matrix Factorization Model Training
-
-The model is to minimize the mean square error between the ground truth value and a dot product of the two predicted fragment factor vectors.  The factor matrices are implemented as PyTorch `Embedding`.  The training process converges in 1,000 iterations/10 seconds as shown below since our current data set is very small (5 fragments x 10 targets).  The ntdemo service runs the training at the start-up time.
-
-![Model Training](asset/images/figure02.png)
-
-## Serving from Spark Backing Store
-
-[Fragment Similarity matrix](#fragment-similarity) is stored to Spark backing store.  It is served from the Spark backing store every time the REST API is called.
+Note that the `data.json` is on your local disk.  To retrain the model with more complex data set, you can modify `data.json` and restart the container.
 
 ## REST API
 
-The ntdemo service supports a `GET` method.  The ntdemo client calls this API when `GET_METRICS_FROM_SERVER = True` and visualizes the cosine similarity.
+The ntdemo service supports a `GET` method.
 
 ```shell
 METHOD: GET
 PATH: /cosine/score
 PARAMS: None
 
-RETURNS: fragment names and cosine scores as an object †
+RETURNS: fragment names and cosine scores as an object
 ```
 
-† see below example
-
-### Example Request:
+**Request**:
 ```shell
 curl http://<host>:<port>/cosine/score
 ```
@@ -171,7 +164,11 @@ curl http://<host>:<port>/cosine/score
   ]
 }
 ```
-The cosine scores are shown in the 5x5 map.
+The cosine scores are shown in [the 5x5 map](#figure-showing-the-similarity-of-five-fragments-in-percentage).
+
+## Serving from Spark Backing Store
+
+[Fragment Similarity matrix](#figure-showing-the-similarity-of-five-fragments-in-percentage) is saved in Spark backing store.  It is read from the backing store every time the REST API is called.
 
 ## Show Fragment Factor Weights in 3D
 
@@ -183,9 +180,11 @@ You can visualize the model parameters learned in the train run by `python ntdem
  (-1.14348, 1.20169,  0.53775),
  (-0.48097, 2.06527,  0.22856)]
 ```
-First, the 2D map is displayed.  After you close the 2D map, the Plotly Dash server will start at `0.0.0.0:8050`.  Go ahead and check out the interactive 3D figure on your browser.
+First, [the 2D map](#figure-showing-the-similarity-of-five-fragments-in-percentage) is displayed.  After you close the 2D map, the Plotly Dash server will start at `0.0.0.0:8050`.  You can check out the interactive 3D on your browser.
 
-Please note that the model is trained in the local memory space inside the client using your local `/data/data.json`.  The ntdemo server will not be affected.
+Note that the model is trained outside of the container.  All the dependent packages need to exist on your local environment.
+
+It is possible to [install ntdemo client from github](#3-install-ntdemo-client-from-github) and run the client code inside the container, then, draw on the host's display via X11 as we cover in [this section](#draw-from-matplotlib-in-container-to-macos-host-display).
 
 ![Factor Weights](asset/images/figure03.png)
 
@@ -194,20 +193,20 @@ Please note that the model is trained in the local memory space inside the clien
 ```shell
 docker run -v /Users/user/ntdemo/asset/:/data -p 3030:3030 -p 8050:8050 -p 5006:5006 -t setogit/ntdemo2 bash bokeh.sh
 ```
-The `setogit/ntdemo2` container includes more than `spark` and `pytorch`.  As shown in the `Dockerfile`, `openjdk` is required by `spark`, so it's in there.  For visualization, `matplotlib` and <a href="https://bokeh.pydata.org/en/latest/" target="_blank">bokeh</a> are included.  Other numerical packages such as `numpy`/`scipy` and `pandas` are included as well.
+The `setogit/ntdemo2` container includes more than `spark` and `pytorch`.  `openjdk` is required by `spark`, so it's in there.  For visualization, `matplotlib` and <a href="https://bokeh.pydata.org/en/latest/" target="_blank">bokeh</a> are included.  Other numerical packages such as `numpy`/`scipy` and `pandas` are included in the container as well.
 
-To run an bokeh example, `docker run` the container with `setogit/ntdemo2 bash bokeh.sh`.  Once the `bokeh` server is started, see how it's displayed with your browser: `http://0.0.0.0:5006` or `http:localhost:5006`
+To run bokeh examples, `docker run` the container with `setogit/ntdemo2 bash bokeh.sh`.  Once the `bokeh` server is started, see how it's displayed with your browser: `http://0.0.0.0:5006` or `http:localhost:5006`
 
 ## Running on the cloud
 
 First, please make sure ports: 3030, 8050, and 5006 are externally accessible.
 
-If you're running the container on the cloud, the `bokeh` server does not accept requests from anybody but localhost.  Mitigation is to `ssh` into your host on the cloud, access into the container: `sudo docker exec -it <container id> bash`, and restart the `bokeh` server in the container with `allow-websocket-origin` option as follows:
+In case of running the container on the cloud, the `bokeh` server does not accept requests from anybody but localhost.  Mitigation is to `ssh` into your host on the cloud, access into the container: `sudo docker exec -it <container id> bash`, and restart the `bokeh` server in the container with `allow-websocket-origin` option as follows:
 ```shell
 python -c "import bokeh.sampledata; bokeh.sampledata.download()"
 bokeh serve --allow-websocket-origin=<host name>:5006 --show /work/server/bokeh_examples/gapminder/
 ```
-For example, in case of AWS EC2 instance, it should look like:
+For example, on AWS, it looks like:
 ```
 bokeh serve --allow-websocket-origin=ec2-15-236-153-130.us-west-1.compute.amazonaws.com:5006 --show bokeh_examples/gapminder/
 ```
@@ -219,7 +218,7 @@ See how it's displayed with your browser: `https://<host name>:5006`
 
 Local (non-web-based) GUI packages like `matplotlib` can draw images from inside the ntdemo container on the container host's display using X11 server. Here is the step to set up the X11 server on MacOS.  When the setup is successfully done, small X11 server window will show up on the Mac screen.
 ```shell
-Need to install ocat and XQuartz first:
+Need to install socat and XQuartz first:
 1. brew install socat
 2. brew cask install xquartz
 3. logoff then logon to MacOS
@@ -230,7 +229,7 @@ Need to install ocat and XQuartz first:
  > socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\"$DISPLAY\" &
  > open -a XQuartz && xhost + $IP
 ```
-Then, restart the container.  The Fragment Similarity figure (matplotlib drawing) will be displayed on Mac display in X11 window:
+Then, restart the container.  [The Fragment Similarity figure (matplotlib drawing)](#figure-showing-the-similarity-of-five-fragments-in-percentage) will be displayed on Mac display in X11 window:
 
 ```
 docker run -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix -p 3030:3030 -p 8050:8050 -p 5006:5006 -t setogit/ntdemo2
@@ -241,7 +240,7 @@ To run a non-server bokeh app on the server side, `docker exec -it <docker id> b
 python -c "import bokeh.sampledata; bokeh.sampledata.download()"
 python bokeh_examples/histogram.py
 ```
-You can run any *.py script under `/work/server/bokeh_examples` this way.  Note that the `bokeh` example *.py draws in `firefox` which is running inside the container.  The GUI app (firefox) is drawn on the host display via X11.
+You can run any *.py script under `/work/server/bokeh_examples` this way.  Note that the `bokeh` example *.py draws in `firefox` which is running inside the container.  The GUI app (firefox) is shown on the host display via X11.
 
 References:
     <a href="https://blog.alexellis.io/linux-desktop-on-mac/" target="_blank">Bring Linux apps to the Mac Desktop with Docker</a>, 
@@ -251,25 +250,25 @@ References:
 
 ## Enable GPU access inside the container
 
-PyTorch training can be accelerated if Nvidia GPU is available on the host.  The `ntdemo2` docker image contains PyTorch and required packages such as CUDA Tool 10.0.130 to access the host GPU from the container.
+PyTorch training can be accelerated in case GPU is available on the host.  The `ntdemo2` docker image contains PyTorch and required packages such as CUDA Tool 10.0.130 to access Nvidia GPU on the host.
 
-On the host side, you need to install **nvidia-docker2** to enable GPU access.  Note that `--runtime=nvidia` is the key.
+On the host side, you need to install **nvidia-docker2** to enable GPU access.  `--runtime=nvidia` is required.
 ```shell
 nvidia-docker2 run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
 ```
-Nvidia-docker2 supports Linux platforms only.  The details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` on GPU-enabled EC2 instances:
+Nvidia-docker2 supports Linux platforms only.  Details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` on GPU-enabled EC2 instances.  Note that since multiple versions of CUDA are pre-installed and 9.0 is the default, we need to manually switch to 10.0:
 ```shell
 sudo rm /usr/local/cuda
 sudo ln -s /usr/local/cuda-10.0 /usr/local/cuda
 
 sudo docker run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
 ```
-Note that since multiple versions of CUDA are pre-installed and 9.0 is the default, we need to manually switch to 10.0.  Try some CUDA tool to confirm GPU access inside the container.  **Deep Learning Base AMI (Amazon Linux) Version 16.2** AMI and **g3s.xlarge** EC2 instance are used:
+**Deep Learning Base AMI (Amazon Linux) Version 16.2** AMI and **g3s.xlarge** EC2 instance are used.  Run `nvcc` or `nvidia-smi` inside the container to verify the GPU access:
 ```shell
 # show the CUDA toolkit version
 nvcc -V
 
-root@d8f3219703fc:/work/code# nvcc -V
+root@d8f3219703fc:/work# nvcc -V
 nvcc: NVIDIA (R) Cuda compiler driver
 Copyright (c) 2005-2018 NVIDIA Corporation
 Built on Sat_Aug_25_21:08:01_CDT_2018
@@ -280,7 +279,7 @@ Cuda compilation tools, release 10.0, V10.0.130
 # show the GPU status
 nvidia-smi
 
-root@d8f3219703fc:/work/code# nvidia-smi
+root@d8f3219703fc:/work# nvidia-smi
 
 +-----------------------------------------------------------------------------+
 | NVIDIA-SMI 410.79       Driver Version: 410.79       CUDA Version: 10.0     |
@@ -304,13 +303,13 @@ You can also run a short PyTorch code:
 ```shell
 python -c "import torch; print(torch.cuda.is_available())"
 ```
-Note that PyTorch 1.0 does not run on `g2.2xlarge` EC2 instance due to `old_gpu_warn`.
+The output should be `True`.  Caveat: PyTorch 1.0 does not run on `g2.2xlarge` EC2 instance due to `old_gpu_warn`.
 
 ## Chatbot Model Training on GPU and CPU
 
-The second model example included in `ntdemo2` is chatbot (English and Japanese) which is a modified version of <a href="https://pytorch.org/tutorials/" target="_blank">the tutorial</a> provided by the PyTorch team.  It's <a href="https://arxiv.org/abs/1506.05869" target="_blank">seq2seq model with attention</a>.
+The second model example built in the `ntdemo2` container is chatbot (English and Japanese) which is a modified version of <a href="https://pytorch.org/tutorials/" target="_blank">the tutorial</a> provided by the PyTorch team.  It's <a href="https://arxiv.org/abs/1506.05869" target="_blank">seq2seq model with attention</a>.
 
-The inference/evaluation (single run) is fast enough on CPU, but for training, GPU plays a key role to run millions of iterations.  For example, the chatbot training on `g3s` EC2 instance with `Tesla M60` GPU takes less than one hour.  On MacBook Pro CPU, it takes 10 hours for 30000 iterations.
+The inference/evaluation (single run) is fast enough on CPU, but for training, GPU helps a lot to run millions of iterations.  For example, the chatbot training on `g3s` EC2 instance with `Tesla M60` GPU takes less than one hour.  On MacBook Pro CPU, it takes 10 hours for 30000 iterations.
 
 ```shell
 root@0c0b3f286a39:/work/chatbot# python chatbot.pyc -h
@@ -322,8 +321,6 @@ python chatbot.pyc <LANGUAGE> <ITERATIONS>
    pre-trained EN : 29000 iterations
                JA : 25000 iterations
 
-   CHECKPOINT should be <= ITERATIONS
-
 Examples:
    python chatbot.py    : chat in English
    python chatbot.py JA : chat in Japanese
@@ -331,7 +328,7 @@ Examples:
    python chatbot.py EN 28000 : chat in English because pre-trained to 29000 
 
 ```
-Here is a transcript of casual dialogue between human (>) and the Japanese chatbot (Bot:) after 25000 training iterations.
+Here is a dialogue between human (>) and the Japanese chatbot (Bot:) after 25000 training iterations.
 
 ```shell
 チャットを始めてください。"q"を入力すれば終了します。
@@ -386,7 +383,6 @@ Bot: うん
 > q
 ```
 
-
 ## Feature/Task Items
 
 |  | Low | Mid | High |
@@ -412,6 +408,14 @@ Bot: うん
 - [x] Run bokeh server in container
 - [x] Draw from matplotlib in container to MacOS host display
 - [x] Enable GPU access inside the container
+- [x] Integrate chatbot (pre-trained English)
+- [x] Integrate chatbot (pre-trained Japanese)
+
+## Appendix: Chemical Fragment Similarity
+
+> *Can we predict latent functional similarity between Chemical fragments ?*
+> 
+> Idea: Chemical compounds are made of smaller parts (fragments). The compounds interact with protein targets when a drug alleviates a disease.  Hypothesis is that there might be some correlation at fragment level in case two compounds are known to alleviate a certain disease.  Compounds-targets activities are directly observable, but fragments-targets are not.  Given the protein activity data observed in in-vivo tests, can we predict the latent mechanism at fragment level?  If two compounds show different side effects, can we explain the mechanism at fragment level?
 
 ## Revision History
 
@@ -420,3 +424,4 @@ Bot: うん
 * 2.1.0 Matplotlib and bokeh server running in container  setogit@gmail.com
 * 2.1.1 Plotly Dash and Bokeh servers running in container on cloud  setogit@gmail.com
 * 2.1.2 (ntdemo2) Enable GPU access inside the container  setogit@gmail.com
+* 2.1.3 (ntdemo2) Add chatbot examples
