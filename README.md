@@ -2,11 +2,11 @@
 
 We can think of  container as a **portable development environment**.  Code and data are managed with version control system (VCS) such as Github and Bitbucket.  We pull them to local repository and mounted to the container as external volumes.  In software development work-flow, the VCS is integrated with CI&CD infrastructure for test, build, deployment and documentation.  The code and data are mounted/unmounted to the container as needed.  The ntdemo container is the portable development environment for deep learning work flow.
 
-The ntdemo docker image contains one set of DL framework (PyTorch), data base (Spark), and visualization tools (matplotlib, bokeh, plotly/dash).  We can pick and choose any DL framework, data base and visualization packages and build another container image.  We can even create a variety of containers for a variety of development work-flows, e.g., Nodejs, PostgreSQL and React for frontend work, or RDBMS and No-SQL databases with statistical packages for data science work-flows.
+The ntdemo contains one set of DL framework (PyTorch), data base (Spark), and visualization tools (matplotlib, bokeh, plotly/dash).  We can pick and choose any DL framework, data base and visualization packages and build another container image.  We can even create a variety of containers for a variety of development work-flows, e.g., Nodejs, PostgreSQL and React for frontend work, or RDBMS and No-SQL databases with statistical packages for data science work-flows.
 
 What about hardware?  We can run the container not only on laptop but on the cloud with many different configurations - memory size, network speed, storage capacity, GPU, etc.  We can put local docker image storage on DISK1, github local repositories on DISK2, and data sets on DISK3 and mount them to compute resource as needed.  For example, I run the container on CPU of my laptop for initial prototyping.  For training with terabytes of production dataset, I use the same container on the cloud with GPU.  The training speed is 10x of laptop at $1 per hour.  10 hours vs. 1 hour; 10x productivity gain for $1, not bad.
 
-The productivity/cost is manageable as we wish.  `ntdemo2` container is capable of running all those scenarios.
+`ntdemo2` container is capable of running all those scenarios.  Development cost and performance can be optimized as we wish.
 
 We've got a lot to cover.  Let's start.
 
