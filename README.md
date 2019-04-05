@@ -1,38 +1,35 @@
-# Container as Portable Dev Environment
+# Container as Portable Dev Env
+
+* Client/Server in Python and Flask
+* [Containerize with Docker and Dockerhub](#install-ntdemo-from-docker-hub)
+* [Manage the container w/ Kubernetes](#optional-add-the-container-to-kubernetes-cluster)
+* Data pipeline with Spark
+* [Matrix factorization model using PyTorch](#matrix-factorization-model-training)
+* [Enable GPU access inside the container](#enable-gpu-access-inside-the-container)
+* [Deep Learning Model Training on GPU and CPU](#deep-learning-model-training-on-gpu-and-cpu) (Seq2Seq : [Chatbot](#deep-learning-model-training-on-gpu-and-cpu), [Prognostics](#iot-sensor-measurement-prediction-model))
+* Export the model to ONNX
+* Visualize with [matplotlib(2D)](#draw-from-matplotlib-in-container-to-macos-host-display) and [Plotly/Dash(interactive 3D)](#show-fragment-factor-weights-in-3d)
+* [Run bokeh server in container](#run-bokeh-server-in-container)
+* [Draw from matplotlib in container to MacOS host display](#draw-from-matplotlib-in-container-to-macos-host-display)
+* Appendix: [Chemical fragment functional similarity model](#appendix-chemical-fragment-similarity)
+
+# Introduction
 
 We can think of  container as a **portable development environment**.  Code and data are managed with version control system (VCS) such as Github and Bitbucket.  We pull them to local repository and mounted to the container as external volumes.  In software development work-flow, the VCS is integrated with CI&CD infrastructure for test, build, deployment and documentation.  The code and data are mounted/unmounted to the container as needed.  The ntdemo container is the portable development environment for deep learning work flow.
 
 The ntdemo contains one set of DL framework (PyTorch), data base (Spark), and visualization tools (matplotlib, bokeh, plotly/dash).  We can pick and choose any DL framework, data base and visualization packages and build another container image.  We can even create a variety of containers for a variety of development work-flows, e.g., Nodejs, PostgreSQL and React for frontend work, or RDBMS and No-SQL databases with statistical packages for data science work-flows.
 
-What about hardware?  We can run the container not only on laptop but on the cloud with many different configurations - memory size, network speed, storage capacity, GPU, etc.  We can put local docker image storage on DISK1, github local repositories on DISK2, and data sets on DISK3 and mount them to compute resource as needed.  For example, I run the container on CPU of my laptop for initial prototyping.  For training with terabytes of production dataset, I use the same container on the cloud with GPU.  The training speed is 10x of laptop at $1 per hour.  10 hours vs. 1 hour; 10x productivity gain for $1, not bad.
+Development cost and performance can be optimized as we wish.  We can run the container not only on laptop but on the cloud with many different configurations - memory size, network speed, storage capacity, GPU, etc.  We can put local docker image storage on DISK1, github local repositories on DISK2, and data sets on DISK3 and mount them to compute resource as needed.  For example, I run the container on CPU of my laptop for initial prototyping.  For training with terabytes of production dataset, I use the same container on the cloud with GPU.  The training speed is 10x of laptop at $1 per hour.  10 hours vs. 1 hour; 10x productivity gain for $1, not bad.
 
-`ntdemo2` container is capable of running all those scenarios.  Development cost and performance can be optimized as we wish.
+`ntdemo2` container is capable of running all those scenarios.  In this demo, we run through the scenarios and see how the container can be used.
 
-We've got a lot to cover.  Let's start.
-
-# Ntdemo Container Functionality
-
-* Client/Server in Python and Flask
-* Data pipeline with Spark
-* [Matrix factorization model using PyTorch](#matrix-factorization-model-training)
-* [Enable GPU access inside the container](#enable-gpu-access-inside-the-container)
-* [Chatbot Model Training on GPU and CPU](#chatbot-model-training-on-gpu-and-cpu)
-* Export the model to ONNX
-* Visualize with [matplotlib(2D)](#figure-showing-the-similarity-of-five-fragments-in-percentage) and [Plotly/Dash(interactive 3D)](#show-fragment-factor-weights-in-3d)
-* Containerize with Docker and Dockerhub
-* Manage the container w/ Kubernetes
-* [Run bokeh server in container](#run-bokeh-server-in-container)
-* [Draw from matplotlib in container to MacOS host display](#draw-from-matplotlib-in-container-to-macos-host-display)
-* Appendix: [Chemical fragment functional similarity model](#appendix-chemical-fragment-similarity)
-
+#### Ntdemo container architecture
 ![Ntdemo Architecture](asset/images/figure00.png)
-
-
 
 
 ## Quick Start
 
-### (1) Install ntdemo from Docker Hub
+### Install ntdemo from Docker Hub
 
 ```shell
 docker pull setogit/ntdemo2
@@ -44,33 +41,7 @@ curl http://0.0.0.0:3030/cosine/score
 ```
 Please note that it will take a few minutes to train a [Chemical Fragment Similarity](#appendix-chemical-fragment-similarity) model at start-up.  You can also see 3D interactive visualization of the similarity at `0.0.0.0:8050` on your browser.  We'll discuss [the model training](#matrix-factorization-model-training) and [the 3D visualization](#show-fragment-factor-weights-in-3d) later.
 
-### (2) Chatbot deep learning model
-
-The container includes another model: chatbot.  It's pre-trained.  Open a separate terminal window and run three command lines:
-```shell
-sudo docker exec -it <container id> bash
-```
-then, inside the container:
-```shell
-cd /work/chatbot
-python chatbot.pyc
-```
-in 10 sec, it'll be ready.  
-```shell
-You can start chatting or "q" to quit.
-> hi
-Bot: hi how d your day go ?
-> good. what is your name?
-Bot: my name is sir robin of camelot !
-> how old are you, sir?
-Bot: twenty eight .
-> do you drink?
-Bot: no .
-> 
-```
-We'll discuss [more about the chatbot in GPU section](#chatbot-model-training-on-gpu-and-cpu).
-
-### (3) Install ntdemo client from Github
+### Install ntdemo source from Github
 
 <a href="https://github.com/Setogit/ntdemo/blob/master/matrixfactorization_drug_discovery_client.py" target="_blank">The client code</a> calls [REST API](#rest-api) and visualizes the functional similarity of each fragment-fragment pair.
 ```shell
@@ -81,6 +52,19 @@ python matrixfactorization_drug_discovery_client.py
 ```
 #### Figure showing the similarity of five fragments in percentage
 ![Fragment Similarity](asset/images/figure01.png)
+
+### Chatbot deep learning model
+
+The container includes another deep learning model: chatbot.  Open a separate terminal window and run three command lines:
+```shell
+sudo docker exec -it <container id> bash
+```
+then, inside the container:
+```shell
+cd /work/chatbot
+python chatbot.pyc
+```
+in 10 sec, it'll be ready to chat.  We'll discuss [more about the deep learning model training in GPU section](#deep-learning-model-training-on-gpu-and-cpu).
 
 ### (Optional) Add the container to Kubernetes cluster
 
@@ -309,11 +293,11 @@ python -c "import torch; print(torch.cuda.is_available())"
 ```
 The output should be `True`.  Caveat: PyTorch 1.0 does not run on `g2.2xlarge` EC2 instance due to `old_gpu_warn`.
 
-## Chatbot Model Training on GPU and CPU
+## Deep Learning Model Training on GPU and CPU
 
-The second model example built in the `ntdemo2` container is chatbot (English and Japanese) which is a modified version of <a href="https://pytorch.org/tutorials/" target="_blank">the tutorial</a> provided by the PyTorch team.  It's <a href="https://arxiv.org/abs/1506.05869" target="_blank">seq2seq model with attention</a>.
+The second model example built in the `ntdemo2` container is chatbot (English and Japanese) which is a modified version of <a href="https://pytorch.org/tutorials/" target="_blank">the tutorial</a> provided by the PyTorch team.
 
-The inference/evaluation (single run) is fast enough on CPU, but for training, GPU helps a lot to run millions of iterations.  For example, the chatbot training on `g3s` EC2 instance with `Tesla M60` GPU takes less than one hour.  On MacBook Pro CPU, it takes 10 hours for 30000 iterations.
+The inference/evaluation (single run) is fast enough on CPU, but for training, GPU helps a lot to run millions of iterations.  For example, the chatbot training on `g3s` EC2 instance with `Tesla M60` GPU takes less than one hour for 30,000 iterations.  On MacBook Pro CPU, it takes 10 hours.
 
 ```shell
 root@0c0b3f286a39:/work/chatbot# python chatbot.pyc -h
@@ -386,6 +370,16 @@ Bot: え えーと
 Bot: うん
 > q
 ```
+### IoT Sensor Measurement Prediction Model
+
+The chatbot model essentially takes a 10-word English sequence and predicts a 10-word English sequence.  We retrained the same model with Japanese-Japanese data set and built the Japanese chatbot.  It's straight forward to use the same model and build English to Japanese neural machine translator (NMT).  What if we use numerical data instead of natural language text data?  It can be extended to, for example, the model that predicts the next 10 time-series values given 30 time-series values like IoT sensor measurement data prediction or _Prognostics_.
+
+![ ](asset/images/figure06.png)
+
+One of the benchmark sensor data sets is <a href="https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/#turbofan" target="_blank">NASA Turbofan data set</a>.  The figures above show the MSE loss convergence trend in two cases: (A) 582 training data from 4 sensor files, and (B) 43,591 training data from 300 sensor files.  (A) clearly shows the loss convergence.  (B) convergence is much slower because of the significantly more data patterns the model needs to learn.  Now that the architecture seems to work, we can extend it to wider, deeper, multivariate model for production use.  The train/test/tuning process would be way more compute intensive.  Good news is that multi GPU's and the container-based dev environment will greatly improve the productivity.
+
+The four less-noisy sensor measurements (A) are cherry-picked from trainFD001.txt in the Tarbofan data set, i.e., {unit:9, sensor:10}, {unit:52, sensor:10}, {unit:52, sensor:15}, and {unit:53, sensor:3}.  The data set used for (B) is sensor 3, 10, and 15 of all the 100 units in trainFD001.txt.  The data set is not included in the `ntdemo2` container, but you can <a href="http://ti.arc.nasa.gov/c/6/" target="_blank">download the zip file</a> from the NASA repository.  <a href="https://www.phmsociety.org/sites/phmsociety.org/files/phm_submission/2014/ijphm_14_014.pdf" target="_blank">Here</a> is a great paper discussing the dataset.
+
 
 ## Feature/Task Items
 
@@ -414,6 +408,7 @@ Bot: うん
 - [x] Enable GPU access inside the container
 - [x] Integrate chatbot (pre-trained English)
 - [x] Integrate chatbot (pre-trained Japanese)
+- [x] Add regression example for training on GPU
 
 ## Appendix: Chemical Fragment Similarity
 
@@ -423,9 +418,9 @@ Bot: うん
 
 ## Revision History
 
-* 1.0.0 Initial release  setogit@gmail.com
-* 2.0.0 Support data set customization with data.json  setogit@gmail.com
-* 2.1.0 Matplotlib and bokeh server running in container  setogit@gmail.com
-* 2.1.1 Plotly Dash and Bokeh servers running in container on cloud  setogit@gmail.com
-* 2.1.2 (ntdemo2) Enable GPU access inside the container  setogit@gmail.com
-* 2.1.3 (ntdemo2) Add chatbot examples
+* 1.0.0 Initial release
+* 2.0.0 Support data set customization with data.json
+* 2.1.0 Matplotlib and bokeh server running in container
+* 2.1.1 Plotly Dash and Bokeh servers running in container on cloud
+* 2.1.2 (ntdemo2) Enable GPU access inside the container
+* 2.1.3 (ntdemo2) Add chatbot and time series examples
