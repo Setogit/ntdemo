@@ -244,7 +244,7 @@ On the host side, you need to install **nvidia-docker2** to enable GPU access.  
 ```shell
 nvidia-docker2 run --runtime=nvidia -p 3030:3030 -p 8050:8050 -t setogit/ntdemo2
 ```
-Nvidia-docker2 supports Linux platforms only.  Details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` on GPU-enabled EC2 instances.  Note that since multiple versions of CUDA are pre-installed and 9.0 is the default, we need to manually switch to 10.0:
+Nvidia-docker2 supports Linux platforms only.  Details are <a href="https://github.com/NVIDIA/nvidia-docker">here</a>.  On AWS, nvidia-docker2 is pre-installed as `docker` in the GPU-enabled AMI image.  Note that since multiple versions of CUDA are pre-installed and 9.0 is the default, we need to manually switch to 10.0:
 ```shell
 sudo rm /usr/local/cuda
 sudo ln -s /usr/local/cuda-10.0 /usr/local/cuda
@@ -310,10 +310,10 @@ python chatbot.pyc <LANGUAGE> <ITERATIONS>
                JA : 25000 iterations
 
 Examples:
-   python chatbot.py    : chat in English
-   python chatbot.py JA : chat in Japanese
-   python chatbot.py JA 28000 : train Japanese chatbot from the pre-trained (25000 iterations) till 28000 iterations, then chat in Japanese
-   python chatbot.py EN 28000 : chat in English because pre-trained to 29000 
+   python chatbot.pyc    : chat in English
+   python chatbot.pyc JA : chat in Japanese
+   python chatbot.pyc JA 28000 : train Japanese chatbot from the pre-trained (25000 iterations) till 28000 iterations, then chat in Japanese
+   python chatbot.pyc EN 28000 : chat in English because pre-trained to 29000 
 
 ```
 Here is a dialogue between human (>) and the Japanese chatbot (Bot:) after 25000 training iterations.
